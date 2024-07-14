@@ -1,0 +1,17 @@
+{
+  "name": "gold-price-notification-bot",
+  "version": "1.0.0",
+  "description": "When ever there is a change in the gold price notifies you with the email",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Creotove",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.14",
+    "puppeteer": "^22.13.0"
+  }
+}

@@ -10,6 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.14",
     "puppeteer": "^22.13.0"

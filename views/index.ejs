@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Price</title>
+    <style>
+        body {
+            font-family: Georgia, serif;
+            color: hsl(18 56.8% 43.5%);
+            background-color: #ded8c4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        .price-container {
+            text-align: center;
+        }
+        .price {
+            font-size: 5rem;
+            font-weight: 600;
+            margin: 0;
+            display: inline-block;
+        }
+        .price span {
+            display: inline-block;
+            border-bottom: 2px solid currentColor;
+            padding-bottom: 5px;
+            margin: 0 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="price-container">
+        <p class="price" id="price-display"><%= lastPrice ? `₹${lastPrice.toLocaleString('en-IN')}` : 'Loading...' %></p>
+    </div>
+    <script>
+        const interval = setInterval(() => {
+            function wrapLetters() {
+            const priceDisplay = document.getElementById('price-display');
+            const text = priceDisplay.textContent;
+            priceDisplay.innerHTML = text.split('').map(char => 
+                char === ' ' ? ' ' : `<span>${char}</span>`
+            ).join('');
+        }
+        wrapLetters();
+        console.log('Price displayed');
+        }, 3000);
+        
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
-const puppeteer = require('puppeteer');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
+const { chromium } = require('playwright');
 require('dotenv').config();
 
 // Email credentials
@@ -12,9 +12,9 @@ const recipientUsers = [process.env.RECIPIENT_EMAIL_ONE, process.env.RECIPIENT_E
 async function fetchGoldPrice() {
     let browser;
     try {
-        browser = await puppeteer.launch();
+        browser = await chromium.launch();
         const page = await browser.newPage();
-        await page.goto(goldPriceUrl, { waitUntil: 'networkidle2' });
+        await page.goto(goldPriceUrl, { waitUntil: 'networkidle' });
 
         // Use the appropriate selector to get the gold price from the search result
         const goldPrice = await page.$eval('.LEcS3c .vlzY6d span:first-child', el => parseFloat(el.textContent.replace(/[^\d.-]/g, '')));

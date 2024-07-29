@@ -4,7 +4,8 @@
   "description": "When ever there is a change in the gold price notifies you with the email",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "postinstall": "npx playwright install"
   },
   "author": "Creotove",
   "license": "ISC",
@@ -14,6 +15,6 @@
     "express": "^4.19.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.14",
-    "puppeteer": "^22.13.0"
+    "playwright": "^1.45.3"
   }
 }

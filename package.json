@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "install": "npm install",
     "postinstall": "npx playwright install && npx playwright install-deps"
   },
   "author": "Creotove",

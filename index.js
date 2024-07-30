@@ -24,14 +24,23 @@ const pusher = new Pusher({
   useTLS: true
 });
 
-const viewsPath = path.resolve(dirname);
+// Serve static files from the public directory
 
-app.set('views', viewsPath);
-app.set('view engine', 'ejs');
-
-// Route to render the home page
+// Route to serve the HTML file with injected environment variables
 app.get("/", (req, res) => {
-  res.render("index.ejs");
+  const htmlFilePath = path.join(dirname, 'public', 'index.html');
+  fs.readFile(htmlFilePath, 'utf8', (err, data) => {
+    if (err) {
+      console.log('Error reading HTML file:', err);
+      res.status(500).send("Error reading HTML file");
+      return;
+    }
+    const replacedData = data
+      .replace(/process.env.PUSHER_KEY/g, process.env.PUSHER_KEY)
+      .replace(/process.env.PUSHER_CLUSTER/g, process.env.PUSHER_CLUSTER);
+      console.log('Sending index.html:', replacedData);
+    res.send(replacedData);
+  });
 });
 
 // Route to get the current gold price
@@ -73,6 +82,7 @@ app.get('/debug-files', (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+app.use(express.static(path.join(dirname, 'public')));
 
 // Start the server and initialize the gold price tracker
 const httpServer = createServer(app);

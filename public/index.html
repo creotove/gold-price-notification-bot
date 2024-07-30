@@ -39,8 +39,9 @@
       <p class="price" id="price-display">Loading...</p>
     </div>
     <script>
-      const pusher = new Pusher("<%= process.env.PUSHER_KEY %>", {
-        cluster: "<%= process.env.PUSHER_CLUSTER %>"
+     try {
+      const pusher = new Pusher("process.env.PUSHER_KEY", {
+        cluster: "process.env.PUSHER_CLUSTER"
       });
 
       const channel = pusher.subscribe("gold-price-channel");
@@ -59,7 +60,7 @@
           wrapLetters();
         }
       });
-
+    
       function wrapLetters() {
         const text = priceDisplay.textContent;
         priceDisplay.innerHTML = text
@@ -82,6 +83,10 @@
 
       // Initial wrapping
       wrapLetters();
+    } catch (error) {
+        console.error("Error initializing Pusher:", error);
+     }
+
     </script>
   </body>
 </html>

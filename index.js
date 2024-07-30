@@ -1,147 +1,101 @@
-// // import express from "express";
-// // import { checkGoldPrice, getLastGoldPrice } from "./goldPriceTracker.js";
-
-// // const app = express();
-// // const port = process.env.PORT || 3000;
-
-// // app.set("view engine", "ejs");
-// // app.use(express.static("public"));
-
-// // // API route to get the current gold price
-// // app.get("/api/goldprice", async (req, res) => {
-// //   const currentPrice = await getLastGoldPrice();
-// //   res.json({ price: currentPrice });
-// // });
-
-// // // Route to render the home page
-// // app.get("/", async (req, res) => {
-// //   const goldPrice = await checkGoldPrice();
-// //   res.render("index", { goldPrice });
-// // });
-
-// // // Start the server and initialize the gold price tracker
-// // app.listen(port, async () => {
-// //   console.log(`Server running on http://localhost:${port}`);
-// //   await checkGoldPrice();
-// // });
-
-// import express from "express";
-// import { createServer } from "http";
-// import { Server } from "socket.io";
-// import { checkGoldPrice, getLastGoldPrice } from "./goldPriceTracker.js";
-
-// const app = express();
-// const httpServer = createServer(app);
-// const io = new Server(httpServer);
-
-// const port = process.env.PORT || 3000;
-
-// app.set("view engine", "ejs");
-// app.use(express.static("public"));
-
-// // Socket.IO connection handling
-// io.on("connection", (socket) => {
-//   console.log("A user connected");
-
-//   // Send the initial gold price
-//   checkGoldPrice().then((price) => {
-//     console.log("Sending initial gold price to user");
-//     socket.emit("goldPriceUpdate", price);
-//   });
-
-//   socket.on("disconnect", () => {
-//     console.log("User disconnected");
-//   });
-// });
-
-// // Route to render the home page
-// app.get("/", (req, res) => {
-//   res.render("index");
-// });
-
-// // Start the server and initialize the gold price tracker
-// httpServer.listen(port, async () => {
-//   console.log(`Server running on http://localhost:${port}`);
-//   await checkGoldPrice();
-
-//   // Set up interval to check gold price and emit updates
-//   setInterval(async () => {
-//     const currentPrice = await checkGoldPrice();
-//     io.emit("goldPriceUpdate", currentPrice);
-//   }, 60000); // Check every 10 seconds
-// });
-
 import express from "express";
 import { createServer } from "http";
-import { Server } from "socket.io";
 import { checkGoldPrice, getLastGoldPrice, getGoldPriceData } from "./goldPriceTracker.js";
 import { Parser } from 'json2csv';
-import { fileURLToPath } from "url";
 import path from "path";
+import Pusher from "pusher";
+import cors from "cors";
+import { fileURLToPath } from "url";
 
 const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer);
+app.use(cors());
 
 const port = process.env.PORT || 3000;
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const filename = fileURLToPath(import.meta.url);
+const dirname = path.dirname(filename);
 
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
-
-// Socket.IO connection handling
-io.on("connection", (socket) => {
-  console.log("A user connected");
-
-  // Send the initial gold price
-  checkGoldPrice().then((price) => {
-    console.log("Sending initial gold price to user");
-    socket.emit("goldPriceUpdate", price);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
+// Initialize Pusher
+const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID,
+  key: process.env.PUSHER_KEY,
+  secret: process.env.PUSHER_SECRET,
+  cluster: process.env.PUSHER_CLUSTER,
+  useTLS: true
 });
+
+app.set('views', path.join(dirname, 'views'));
+app.set('view engine', 'ejs');
 
 // Route to render the home page
 app.get("/", (req, res) => {
   res.render("index");
 });
 
-// Route to export gold price data as JSON
-app.get("/api/goldpricedata", (req, res) => {
-  const data = getGoldPriceData();
-  res.json(data);
+// Route to get the current gold price
+app.get("/api/goldprice", async (req, res) => {
+  try {
+    const currentPrice = await getLastGoldPrice();
+    console.log('Sending current price:', currentPrice);
+    res.json({ price: currentPrice });
+  } catch (error) {
+    console.error("Error fetching gold price:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Route to export gold price data as CSV
 app.get("/api/goldpricedata/csv", (req, res) => {
-  const data = getGoldPriceData();
-  const fields = ['price', 'timestamp'];
-  const json2csvParser = new Parser({ fields });
-  const csv = json2csvParser.parse(data);
-  
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename=gold_price_data.csv');
-  res.status(200).end(csv);
+  try {
+    const data = getGoldPriceData();
+    const fields = ['price', 'timestamp'];
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(data);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=gold_price_data.csv');
+    res.status(200).end(csv);
+  } catch (error) {
+    console.error("Error generating CSV:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
+// Route to list files in the directory (for debugging purposes)
 app.get('/debug-files', (req, res) => {
-  const fs = require('fs');
-  const files = fs.readdirSync(__dirname);
-  res.json({ files, dirname: __dirname });
+  try {
+    const fs = require('fs');
+    const files = fs.readdirSync(dirname);
+    res.json({ files, dirname });
+  } catch (error) {
+    console.error("Error reading directory:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Start the server and initialize the gold price tracker
-httpServer.listen(port, async () => {
-  console.log(`Server running on http://localhost:${port}`);
-  await checkGoldPrice();
+const httpServer = createServer(app);
 
-  // Set up interval to check gold price and emit updates
-  setInterval(async () => {
-    const currentPrice = await checkGoldPrice();
-    io.emit("goldPriceUpdate", currentPrice);
-  }, 60000); // Check every minute
+httpServer.listen(port, async () => {
+  try {
+    console.log(`Server running on http://localhost:${port}`);
+    await checkGoldPrice();
+
+    // Set up interval to check gold price and emit updates
+    setInterval(async () => {
+      try {
+        const currentPrice = await checkGoldPrice();
+        console.log('Sending price update via Pusher:', currentPrice);
+
+        await pusher.trigger("gold-price-channel", "price-update", {
+          price: currentPrice
+        });
+        console.log('Pusher event sent successfully');
+      } catch (error) {
+        console.error('Error sending Pusher event:', error);
+      }
+    }, 10000); // Check every minute
+  } catch (error) {
+    console.error("Error initializing server:", error);
+  }
 });
+

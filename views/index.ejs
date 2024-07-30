@@ -1,65 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gold Price</title>
     <style>
-        body {
-            font-family: Georgia, serif;
-            color: hsl(18 56.8% 43.5%);
-            background-color: #ded8c4;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            padding: 0;
-        }
-        .price-container {
-            text-align: center;
-        }
-        .price {
-            font-size: 5rem;
-            font-weight: 600;
-            margin: 0;
-            display: inline-block;
-        }
-        .price span {
-            display: inline-block;
-            border-bottom: 2px solid currentColor;
-            padding-bottom: 5px;
-            margin: 0 2px;
-        }
+      body {
+        font-family: Georgia, serif;
+        color: hsl(18 56.8% 43.5%);
+        background-color: #ded8c4;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+      }
+      .price-container {
+        text-align: center;
+      }
+      .price {
+        font-size: 5rem;
+        font-weight: 600;
+        margin: 0;
+        display: inline-block;
+      }
+      .price span {
+        display: inline-block;
+        border-bottom: 2px solid currentColor;
+        padding-bottom: 5px;
+        margin: 0 2px;
+      }
     </style>
-    <script src="/socket.io/socket.io.js"></script>
-</head>
-<body>
+    <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+  </head>
+  <body>
     <div class="price-container">
-        <p class="price" id="price-display">Loading...</p>
+      <p class="price" id="price-display">Loading...</p>
     </div>
     <script>
-        const socket = io();
-        const priceDisplay = document.getElementById('price-display');
+      const pusher = new Pusher("<%= process.env.PUSHER_KEY %>", {
+        cluster: "<%= process.env.PUSHER_CLUSTER %>",
+      });
 
-        socket.on('goldPriceUpdate', (goldPrice) => {
-            if (goldPrice) {
-                console.log('Gold price updated:', goldPrice);
-                const formattedPrice = `₹${goldPrice.toLocaleString('en-IN')}`;
-                priceDisplay.textContent = formattedPrice;
-                wrapLetters();
-            }
-        });
+      const channel = pusher.subscribe("gold-price-channel");
 
-        function wrapLetters() {
-            const text = priceDisplay.textContent;
-            priceDisplay.innerHTML = text.split('').map(char => 
-                char === ' ' ? ' ' : `<span>${char}</span>`
-            ).join('');
+      const priceDisplay = document.getElementById("price-display");
+
+      channel.bind("pusher:subscription_succeeded", () => {
+        console.log("Successfully subscribed to channel");
+      });
+
+      channel.bind("price-update", function (data) {
+        if (data.price) {
+          console.log("Gold price updated:", data.price);
+          const formattedPrice = `₹${data.price.toLocaleString("en-IN")}`;
+          priceDisplay.textContent = formattedPrice;
+          wrapLetters();
         }
+      });
 
-        // Initial wrapping
-        wrapLetters();
+      function wrapLetters() {
+        const text = priceDisplay.textContent;
+        priceDisplay.innerHTML = text
+          .split("")
+          .map(char => (char === " " ? " " : `<span>${char}</span>`))
+          .join("");
+      }
+
+      // Fetch initial price
+      fetch("/api/goldprice")
+        .then(response => response.json())
+        .then(data => {
+          if (data.price) {
+            const formattedPrice = `₹${data.price.toLocaleString("en-IN")}`;
+            priceDisplay.textContent = formattedPrice;
+            wrapLetters();
+          }
+        })
+        .catch(error => console.error("Error fetching initial price:", error));
+
+      // Initial wrapping
+      wrapLetters();
     </script>
-</body>
+  </body>
 </html>

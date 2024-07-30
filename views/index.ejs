@@ -40,7 +40,7 @@
     </div>
     <script>
       const pusher = new Pusher("<%= process.env.PUSHER_KEY %>", {
-        cluster: "<%= process.env.PUSHER_CLUSTER %>",
+        cluster: "<%= process.env.PUSHER_CLUSTER %>"
       });
 
       const channel = pusher.subscribe("gold-price-channel");

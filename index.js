@@ -6,6 +6,7 @@ import path from "path";
 import Pusher from "pusher";
 import cors from "cors";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const app = express();
 app.use(cors());
@@ -23,7 +24,9 @@ const pusher = new Pusher({
   useTLS: true
 });
 
-app.set('views', path.join(dirname, 'views'));
+const viewsPath = path.resolve(dirname, 'views');
+
+app.set('views', viewsPath);
 app.set('view engine', 'ejs');
 
 // Route to render the home page
@@ -63,7 +66,6 @@ app.get("/api/goldpricedata/csv", (req, res) => {
 // Route to list files in the directory (for debugging purposes)
 app.get('/debug-files', (req, res) => {
   try {
-    const fs = require('fs');
     const files = fs.readdirSync(dirname);
     res.json({ files, dirname });
   } catch (error) {
@@ -98,4 +100,3 @@ httpServer.listen(port, async () => {
     console.error("Error initializing server:", error);
   }
 });
-

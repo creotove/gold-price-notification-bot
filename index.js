@@ -24,14 +24,14 @@ const pusher = new Pusher({
   useTLS: true
 });
 
-const viewsPath = path.resolve(dirname, 'views');
+const viewsPath = path.resolve(dirname);
 
 app.set('views', viewsPath);
 app.set('view engine', 'ejs');
 
 // Route to render the home page
 app.get("/", (req, res) => {
-  res.render("index");
+  res.render("index.ejs");
 });
 
 // Route to get the current gold price

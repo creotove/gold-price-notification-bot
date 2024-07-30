@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "When ever there is a change in the gold price notifies you with the email",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
-    "postinstall": "npx playwright install && npx playwright install-deps"
+    "dev": "nodemon index.js"
   },
   "author": "Creotove",
   "license": "ISC",
@@ -13,8 +14,11 @@
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
+    "jsdom": "^24.1.1",
+    "json2csv": "^6.0.0-alpha.2",
     "node-cron": "^3.0.3",
+    "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.14",
-    "playwright": "^1.45.3"
+    "socket.io": "^4.7.5"
   }
 }

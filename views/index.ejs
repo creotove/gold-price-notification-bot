@@ -32,24 +32,34 @@
             margin: 0 2px;
         }
     </style>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div class="price-container">
-        <p class="price" id="price-display"><%= lastPrice ? `₹${lastPrice.toLocaleString('en-IN')}` : 'Loading...' %></p>
+        <p class="price" id="price-display">Loading...</p>
     </div>
     <script>
-        const interval = setInterval(() => {
-            function wrapLetters() {
-            const priceDisplay = document.getElementById('price-display');
+        const socket = io();
+        const priceDisplay = document.getElementById('price-display');
+
+        socket.on('goldPriceUpdate', (goldPrice) => {
+            if (goldPrice) {
+                console.log('Gold price updated:', goldPrice);
+                const formattedPrice = `₹${goldPrice.toLocaleString('en-IN')}`;
+                priceDisplay.textContent = formattedPrice;
+                wrapLetters();
+            }
+        });
+
+        function wrapLetters() {
             const text = priceDisplay.textContent;
             priceDisplay.innerHTML = text.split('').map(char => 
                 char === ' ' ? ' ' : `<span>${char}</span>`
             ).join('');
         }
+
+        // Initial wrapping
         wrapLetters();
-        console.log('Price displayed');
-        }, 3000);
-        
     </script>
 </body>
 </html>

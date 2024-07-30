@@ -1,47 +1,45 @@
-const nodemailer = require('nodemailer');
-const cron = require('node-cron');
-const { chromium } = require('playwright');
-require('dotenv').config();
+import nodemailer from "nodemailer";
+import cron from "node-cron";
+import fetch from "node-fetch";
+import {JSDOM} from "jsdom";
+import dotenv from "dotenv";
 
-// Email credentials
-const senderEmail = process.env.SENDER_EMAIL;
-const senderPassword = process.env.SENDER_PASSWORD;
-const recipientUsers = [process.env.RECIPIENT_EMAIL_ONE, process.env.RECIPIENT_EMAIL_TWO];
+dotenv.config();
 
-// Function to fetch the current gold price using Puppeteer
+const {SENDER_EMAIL, SENDER_PASSWORD, RECIPIENT_EMAIL_ONE, RECIPIENT_EMAIL_TWO, CITY} = process.env;
+const recipientUsers = [RECIPIENT_EMAIL_ONE, RECIPIENT_EMAIL_TWO];
+
+let goldPriceData = [];
+
 async function fetchGoldPrice() {
-    let browser;
-    try {
-        browser = await chromium.launch();
-        const page = await browser.newPage();
-        await page.goto(goldPriceUrl, { waitUntil: 'networkidle' });
-
-        // Use the appropriate selector to get the gold price from the search result
-        const goldPrice = await page.$eval('.LEcS3c .vlzY6d span:first-child', el => parseFloat(el.textContent.replace(/[^\d.-]/g, '')));
-
-        await browser.close();
-        console.log('Gold price fetched:', goldPrice);
-        return goldPrice;
-    } catch (error) {
-        console.error('Error fetching gold price:', error);
-        if (browser) await browser.close();
-        return null;
-    }
+  const goldPriceUrl = `https://www.google.com/search?q=gold+price+today+${CITY}&rlz=1C1RXQR_enIN1117IN1117&oq=g&gs_lcrp=EgZjaHJvbWUqBggCEEUYOzIGCAAQRRg8MgYIARBFGDwyBggCEEUYOzIGCAMQRRg8MgYIBBBFGDMyBggFEEUYPDIGCAYQRRg8MgYIBxBFGDzSAQg0Mzc5ajBqN6gCALACAA&sourceid=chrome&ie=UTF-8`;
+  try {
+    const response = await fetch(goldPriceUrl);
+    const html = await response.text();
+    const dom = new JSDOM(html);
+    const goldPriceElement = dom.window.document.querySelector("a .BNeawe.deIvCb.AP7Wnd");
+    const goldPrice = goldPriceElement?.textContent ?? null;
+    const priceMatch = goldPrice?.match(/(\d{1,3}(,\d{3})*)\s*INR/);
+    return priceMatch?.[1] ?? null;
+  } catch (error) {
+    console.error("Error fetching gold price:", error);
+    return null;
+  }
 }
-// Function to send email notification with a styled template
-async function sendNotification(lastPrice, currentPrice) {
-    let transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: senderEmail,
-            pass: senderPassword
-        }
-    });
 
-    const emailHtml = `
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {user: SENDER_EMAIL, pass: SENDER_PASSWORD},
+  });
+}
+
+async function sendNotification(lastPrice, currentPrice) {
+  const transporter = createTransporter();
+  const emailHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
         <h2 style="text-align: center; color: #333;">Gold Price Alert</h2>
-        <p style="font-size: 16px; color: #555;">The gold price has changed in ${process.env.CITY}.</p>
+        <p style="font-size: 16px; color: #555;">The gold price has changed in ${CITY}.</p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
             <thead>
                 <tr>
@@ -51,56 +49,83 @@ async function sendNotification(lastPrice, currentPrice) {
             </thead>
             <tbody>
                 <tr>
-                    <td style="padding: 10px; border: 1px solid #ddd;">₹${lastPrice.toLocaleString('en-IN')}</td>
-                    <td style="padding: 10px; border: 1px solid #ddd;">₹${currentPrice.toLocaleString('en-IN')}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">₹${lastPrice.toLocaleString("en-IN")}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">₹${currentPrice.toLocaleString("en-IN")}</td>
                 </tr>
             </tbody>
         </table>
-        <p style="font-size: 14px; color: #999; text-align: center; margin-top: 20px;">Notification generated at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+        <p style="font-size: 14px; color: #999; text-align: center; margin-top: 20px;">Notification generated at ${new Date().toLocaleString("en-IN", {timeZone: "Asia/Kolkata"})}</p>
     </div>
-    `;
+  `;
 
-    const mailOptions = recipientUsers.map(email => ({
-        from: senderEmail,
-        to: email,
-        subject: 'Gold Price Alert',
-        html: emailHtml
-    }));
+  const mailOptions = recipientUsers.map(email => ({
+    from: SENDER_EMAIL,
+    to: email,
+    subject: "Gold Price Alert",
+    html: emailHtml,
+  }));
 
-    try {
-        for (let options of mailOptions) {
-            await transporter.sendMail(options);
-            console.log(`Email sent to ${options.to}`);
-        }
-    } catch (error) {
-        console.error('Error sending email:', error);
-    }
+  try {
+    await Promise.all(mailOptions.map(options => transporter.sendMail(options)));
+    console.log("Emails sent successfully");
+  } catch (error) {
+    console.error("Error sending email:", error);
+  }
 }
-// Google search URL for gold price in Ahmedabad
-const goldPriceUrl = `https://www.google.com/search?q=gold+price+today+${process.env.CITY}`;
 
-// Initial gold price
 let lastGoldPrice = null;
 
-// Function to check for gold price change
+// async function checkGoldPrice() {
+//   const currentPrice = await fetchGoldPrice();
+//   if (currentPrice && lastGoldPrice !== null && currentPrice !== lastGoldPrice) {
+//     await sendNotification(lastGoldPrice, currentPrice);
+//     lastGoldPrice = currentPrice;
+//   }
+//   return currentPrice;
+// }
 async function checkGoldPrice() {
-    const currentPrice = await fetchGoldPrice();
-    if (currentPrice && lastGoldPrice !== null && currentPrice !== lastGoldPrice) {
-        sendNotification(lastGoldPrice, currentPrice);
+  const currentPrice = await fetchGoldPrice();
+  if (currentPrice) {
+    const currentTime = new Date().toLocaleString("en-IN", {timeZone: "Asia/Kolkata"});
+    
+    if (lastGoldPrice === null || currentPrice !== lastGoldPrice) {
+      // Add new data point
+      goldPriceData.push({
+        price: parseFloat(currentPrice.replace(/,/g, '')),
+        timestamp: currentTime
+      });
+
+      // If price has changed and we have a previous price, send notification
+      if (lastGoldPrice !== null && currentPrice !== lastGoldPrice) {
+        await sendNotification(lastGoldPrice, currentPrice);
+      }
+
+      lastGoldPrice = currentPrice;
+      console.log(`Gold price updated: ₹${currentPrice} at ${currentTime}`);
     }
-    lastGoldPrice = currentPrice;
-    return currentPrice;
+  }
+  return currentPrice;
 }
 
-// Function to get the last fetched gold price
+
 function getLastGoldPrice() {
-    return lastGoldPrice;
+  return lastGoldPrice;
 }
 
-// Schedule the bot to check the gold price every 10 minutes
-cron.schedule('*/10 * * * *', () => {
-    console.log('Checking gold price...');
-    checkGoldPrice();
-});
+// New function to get all gold price data
+function getGoldPriceData() {
+  return goldPriceData;
+}
+cron.schedule(
+  "*/10 * * * * *",
+  async () => {
+    console.log("[Cron] Checking gold price...");
+    await checkGoldPrice();
+  },
+  {
+    scheduled: true,
+    timezone: "Asia/Kolkata",
+  }
+);
 
-module.exports = { checkGoldPrice, getLastGoldPrice };
+export {checkGoldPrice, getLastGoldPrice, getGoldPriceData};

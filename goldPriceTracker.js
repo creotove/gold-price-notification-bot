@@ -75,24 +75,17 @@ async function sendNotification(lastPrice, currentPrice) {
 
 let lastGoldPrice = null;
 
-// async function checkGoldPrice() {
-//   const currentPrice = await fetchGoldPrice();
-//   if (currentPrice && lastGoldPrice !== null && currentPrice !== lastGoldPrice) {
-//     await sendNotification(lastGoldPrice, currentPrice);
-//     lastGoldPrice = currentPrice;
-//   }
-//   return currentPrice;
-// }
+
 async function checkGoldPrice() {
   const currentPrice = await fetchGoldPrice();
   if (currentPrice) {
     const currentTime = new Date().toLocaleString("en-IN", {timeZone: "Asia/Kolkata"});
-    
+
     if (lastGoldPrice === null || currentPrice !== lastGoldPrice) {
       // Add new data point
       goldPriceData.push({
-        price: parseFloat(currentPrice.replace(/,/g, '')),
-        timestamp: currentTime
+        price: parseFloat(currentPrice.replace(/,/g, "")),
+        timestamp: currentTime,
       });
 
       // If price has changed and we have a previous price, send notification
@@ -106,7 +99,6 @@ async function checkGoldPrice() {
   }
   return currentPrice;
 }
-
 
 function getLastGoldPrice() {
   return lastGoldPrice;

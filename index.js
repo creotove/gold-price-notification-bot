@@ -1,19 +1,20 @@
 import express from "express";
-import { createServer } from "http";
-import { checkGoldPrice, getLastGoldPrice, getGoldPriceData } from "./goldPriceTracker.js";
-import { Parser } from 'json2csv';
+import {createServer} from "http";
+import {checkGoldPrice, getLastGoldPrice, getGoldPriceData} from "./goldPriceTracker.js";
+import {Parser} from "json2csv";
 import path from "path";
 import Pusher from "pusher";
 import cors from "cors";
-import { fileURLToPath } from "url";
+import {fileURLToPath} from "url";
 import fs from "fs";
 
 const app = express();
-app.use(cors());
-
 const port = process.env.PORT || 3000;
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
+
+// Middleware
+app.use(cors());
 
 // Initialize Pusher
 const pusher = new Pusher({
@@ -21,32 +22,114 @@ const pusher = new Pusher({
   key: process.env.PUSHER_KEY,
   secret: process.env.PUSHER_SECRET,
   cluster: process.env.PUSHER_CLUSTER,
-  useTLS: true
+  useTLS: true,
 });
+const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gold Price</title>
+        <style>
+      body {
+        font-family: Georgia, serif;
+        color: hsl(18 56.8% 43.5%);
+        background-color: #ded8c4;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+      }
+      .price-container {
+        text-align: center;
+      }
+      .price {
+        font-size: 5rem;
+        font-weight: 600;
+        margin: 0;
+        display: inline-block;
+      }
+      .price span {
+        display: inline-block;
+        border-bottom: 2px solid currentColor;
+        padding-bottom: 5px;
+        margin: 0 2px;
+      }
+    </style>
+    <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+  </head>
+  <body>
+    <div class="price-container">
+      <p class="price" id="price-display">Loading...</p>
+    </div>
+    <script>
+    try {
+      const pusher = new Pusher(process.env.PUSHER_KEY, {
+        cluster: process.env.PUSHER_CLUSTER
+      });
 
-// Serve static files from the public directory
+      const channel = pusher.subscribe("gold-price-channel");
 
-// Route to serve the HTML file with injected environment variables
-app.get("/", (req, res) => {
-  const htmlFilePath = path.join(dirname, 'serve.html');
-  fs.readFile(htmlFilePath, 'utf8', (err, data) => {
-    if (err) {
-      console.log('Error reading HTML file:', err);
-      res.status(500).send("Error reading HTML file");
-      return;
+      const priceDisplay = document.getElementById("price-display");
+
+      channel.bind("pusher:subscription_succeeded", () => {
+        console.log("Successfully subscribed to channel");
+      });
+
+      channel.bind("price-update", function (data) {
+        if (data.price) {
+          console.log("Gold price updated:", data.price);
+          const formattedPrice = \`₹\${data.price.toLocaleString("en-IN")}\`;
+          priceDisplay.textContent = formattedPrice;
+          wrapLetters();
+        }
+      });
+    
+      function wrapLetters() {
+        const text = priceDisplay.textContent;
+        priceDisplay.innerHTML = text
+          .split("")
+          .map(char => (char === " " ? " " : \`<span>\${char}</span>\`))
+          .join("");
+      }
+
+      // Fetch initial price
+      fetch("/api/goldprice")
+        .then(response => response.json())
+        .then(data => {
+          if (data.price) {
+            const formattedPrice = \`₹\${data.price.toLocaleString("en-IN")}\`;
+            priceDisplay.textContent = formattedPrice;
+            wrapLetters();
+          }
+        })
+        .catch(error => console.error("Error fetching initial price:", error));
+
+      // Initial wrapping
+      wrapLetters();
+    } catch (error) {
+      console.error("Error initializing Pusher:", error);
     }
-    const replacedData = data
-      .replace(/process.env.PUSHER_KEY/g, process.env.PUSHER_KEY)
-      .replace(/process.env.PUSHER_CLUSTER/g, process.env.PUSHER_CLUSTER);
-    res.send(replacedData);
-  });
+    </script>
+  </body>
+</html>
+`;
+
+// Routes
+app.get("/", (_, res) => {
+  const injectedHtml = htmlContent
+    .replace(/process\.env\.PUSHER_KEY/g, JSON.stringify(process.env.PUSHER_KEY))
+    .replace(/process\.env\.PUSHER_CLUSTER/g, JSON.stringify(process.env.PUSHER_CLUSTER));
+  res.send(injectedHtml);
 });
 
-// Route to get the current gold price
-app.get("/api/goldprice", async (req, res) => {
+app.get("/api/goldprice", async (_, res) => {
   try {
     const currentPrice = await getLastGoldPrice();
-    console.log('Sending current price:', currentPrice);
+    console.log("Sending current price:", currentPrice);
     res.json({ price: currentPrice });
   } catch (error) {
     console.error("Error fetching gold price:", error);
@@ -54,58 +137,52 @@ app.get("/api/goldprice", async (req, res) => {
   }
 });
 
-// Route to export gold price data as CSV
-app.get("/api/goldpricedata/csv", (req, res) => {
+app.get("/api/goldpricedata/csv", (_, res) => {
   try {
     const data = getGoldPriceData();
-    const fields = ['price', 'timestamp'];
+    const fields = ["price", "timestamp"];
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(data);
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=gold_price_data.csv');
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=gold_price_data.csv");
     res.status(200).end(csv);
   } catch (error) {
     console.error("Error generating CSV:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 // Route to list files in the directory (for debugging purposes)
-app.get('/debug-files', (req, res) => {
+app.get("/debug-files", (_, res) => {
   try {
     const files = fs.readdirSync(dirname);
-    res.json({ files, dirname });
+    res.json({files, dirname});
   } catch (error) {
     console.error("Error reading directory:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({error: "Internal server error"});
   }
 });
-app.use(express.static(path.join(dirname, 'serve.html')));
-
-// Start the server and initialize the gold price tracker
+// Server initialization
 const httpServer = createServer(app);
 
-httpServer.listen(port, async () => {
+const startServer = async () => {
   try {
     console.log(`Server running on http://localhost:${port}`);
     await checkGoldPrice();
 
-    // Set up interval to check gold price and emit updates
     setInterval(async () => {
       try {
         const currentPrice = await checkGoldPrice();
-        console.log('Sending price update via Pusher:', currentPrice);
-
-        await pusher.trigger("gold-price-channel", "price-update", {
-          price: currentPrice
-        });
-        console.log('Pusher event sent successfully');
+        console.log("Sending price update via Pusher:", currentPrice);
+        await pusher.trigger("gold-price-channel", "price-update", { price: currentPrice });
+        console.log("Pusher event sent successfully");
       } catch (error) {
-        console.error('Error sending Pusher event:', error);
+        console.error("Error sending Pusher event:", error);
       }
-    }, 10000); // Check every minute
+    }, 10000);
   } catch (error) {
     console.error("Error initializing server:", error);
   }
-});
+};
+
+httpServer.listen(port, startServer);

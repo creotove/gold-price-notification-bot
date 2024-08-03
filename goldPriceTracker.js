@@ -100,8 +100,8 @@ async function checkGoldPrice() {
   return currentPrice;
 }
 
-function getLastGoldPrice() {
-  return lastGoldPrice;
+async function getLastGoldPrice() {
+  return await checkGoldPrice();
 }
 
 // New function to get all gold price data

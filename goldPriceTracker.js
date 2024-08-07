@@ -13,16 +13,19 @@ let goldPriceData = [];
 
 async function fetchGoldPrice() {
   console.log("Fetching gold price...");
-  const goldPriceUrl = `https://www.google.com/search?q=gold+price+today+${CITY}&rlz=1C1RXQR_enIN1117IN1117&oq=g&gs_lcrp=EgZjaHJvbWUqBggCEEUYOzIGCAAQRRg8MgYIARBFGDwyBggCEEUYOzIGCAMQRRg8MgYIBBBFGDMyBggFEEUYPDIGCAYQRRg8MgYIBxBFGDzSAQg0Mzc5ajBqN6gCALACAA&sourceid=chrome&ie=UTF-8`;
+  const goldPriceUrl = `https://www.google.com/search?q=gold+price+today+${CITY}&rlz=1C1RXQR_enIN1117IN1117&oq=g&gs_lcrp=EgZjaHJvbWUqBggCEEUYOzIGCAAQRRg8MgYIARBFGDwyBggCEEUYOzIGCAMQRRg8MgYIBBBFGDMyBggFEEUYPDIGCAYQRRg8MgYIBxBFGDzSAQg0Mzc5ajBqN6gCALACAA&ie=UTF-8`;
   try {
-    const response = await fetch(goldPriceUrl);
+    const response = await fetch(goldPriceUrl, {mode: "no-cors"});
     const html = await response.text();
     const dom = new JSDOM(html);
+    console.log("Dom: ",dom);
     const goldPriceElement = dom.window.document.querySelector("a .BNeawe.deIvCb.AP7Wnd");
+    console.log("Gold Price Element: ",goldPriceElement);    
     const goldPrice = goldPriceElement?.textContent ?? null;
+    console.log("Gold Price: ",goldPrice);
     const priceMatch = goldPrice?.match(/(\d{1,3}(,\d{3})*)\s*INR/);
-    console.log("Gold price fetched:", priceMatch?.[1] ?? null);
-    return priceMatch?.[1] ?? null;
+    if (!priceMatch) throw new Error("Gold price not found");
+    return priceMatch?.[1];
   } catch (error) {
     console.log("Error fetching gold price:", error.message);
     return res.status(500).json({error: "Error fetching gold price", message: error.message, succes: false});

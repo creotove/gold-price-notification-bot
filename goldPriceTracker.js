@@ -18,10 +18,9 @@ async function fetchGoldPrice(res) {
     const response = await fetch(goldPriceUrl, {mode: "no-cors"});
     const html = await response.text();
     const dom = new JSDOM(html);
+    console.log(dom);
     const goldPriceElement = dom.window.document.querySelector("a .BNeawe.deIvCb.AP7Wnd");
-    console.log("Gold Price Element: ",goldPriceElement);    
     const goldPrice = goldPriceElement?.textContent ?? null;
-    console.log("Gold Price: ",goldPrice);
     const priceMatch = goldPrice?.match(/(\d{1,3}(,\d{3})*)\s*INR/);
     if (!priceMatch) throw new Error("Gold price not found");
     return priceMatch?.[1];

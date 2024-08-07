@@ -120,20 +120,18 @@ const htmlContent = `
 
 // Routes
 app.get("/", (_, res) => {
-  const injectedHtml = htmlContent
-    .replace(/process\.env\.PUSHER_KEY/g, JSON.stringify(process.env.PUSHER_KEY))
-    .replace(/process\.env\.PUSHER_CLUSTER/g, JSON.stringify(process.env.PUSHER_CLUSTER));
+  const injectedHtml = htmlContent.replace(/process\.env\.PUSHER_KEY/g, JSON.stringify(process.env.PUSHER_KEY)).replace(/process\.env\.PUSHER_CLUSTER/g, JSON.stringify(process.env.PUSHER_CLUSTER));
   res.send(injectedHtml);
 });
 
 app.get("/api/goldprice", async (_, res) => {
   try {
-    const currentPrice = await getLastGoldPrice();
+    const currentPrice = await getLastGoldPrice(res);
     console.log("Sending current price:", currentPrice);
-    res.json({ price: currentPrice });
+    res.json({price: currentPrice});
   } catch (error) {
     console.error("Error fetching gold price:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({error: "Internal server error", message: error.message});
   }
 });
 
@@ -141,7 +139,7 @@ app.get("/api/goldpricedata/csv", (_, res) => {
   try {
     const data = getGoldPriceData();
     const fields = ["price", "timestamp"];
-    const json2csvParser = new Parser({ fields });
+    const json2csvParser = new Parser({fields});
     const csv = json2csvParser.parse(data);
 
     res.setHeader("Content-Type", "text/csv");
@@ -149,7 +147,7 @@ app.get("/api/goldpricedata/csv", (_, res) => {
     res.status(200).end(csv);
   } catch (error) {
     console.error("Error generating CSV:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({error: "Internal server error"});
   }
 });
 // Route to list files in the directory (for debugging purposes)
@@ -174,7 +172,7 @@ const startServer = async () => {
       try {
         const currentPrice = await checkGoldPrice();
         console.log("Sending price update via Pusher:", currentPrice);
-        await pusher.trigger("gold-price-channel", "price-update", { price: currentPrice });
+        await pusher.trigger("gold-price-channel", "price-update", {price: currentPrice});
         console.log("Pusher event sent successfully");
       } catch (error) {
         console.error("Error sending Pusher event:", error);

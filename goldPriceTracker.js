@@ -22,8 +22,7 @@ async function fetchGoldPrice() {
     const priceMatch = goldPrice?.match(/(\d{1,3}(,\d{3})*)\s*INR/);
     return priceMatch?.[1] ?? null;
   } catch (error) {
-    console.error("Error fetching gold price:", error);
-    return null;
+    return res.status(500).json({error: "Error fetching gold price", message: error.message, succes: false});
   }
 }
 
@@ -75,9 +74,8 @@ async function sendNotification(lastPrice, currentPrice) {
 
 let lastGoldPrice = null;
 
-
-async function checkGoldPrice() {
-  const currentPrice = await fetchGoldPrice();
+async function checkGoldPrice(res) {
+  const currentPrice = await fetchGoldPrice(res);
   if (currentPrice) {
     const currentTime = new Date().toLocaleString("en-IN", {timeZone: "Asia/Kolkata"});
 
@@ -100,8 +98,8 @@ async function checkGoldPrice() {
   return currentPrice;
 }
 
-async function getLastGoldPrice() {
-  return await checkGoldPrice();
+async function getLastGoldPrice(res) {
+  return await checkGoldPrice(res);
 }
 
 // New function to get all gold price data

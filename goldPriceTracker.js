@@ -11,14 +11,13 @@ const recipientUsers = [RECIPIENT_EMAIL_ONE, RECIPIENT_EMAIL_TWO];
 
 let goldPriceData = [];
 
-async function fetchGoldPrice() {
+async function fetchGoldPrice(res) {
   console.log("Fetching gold price...");
   const goldPriceUrl = `https://www.google.com/search?q=gold+price+today+${CITY}&rlz=1C1RXQR_enIN1117IN1117&oq=g&gs_lcrp=EgZjaHJvbWUqBggCEEUYOzIGCAAQRRg8MgYIARBFGDwyBggCEEUYOzIGCAMQRRg8MgYIBBBFGDMyBggFEEUYPDIGCAYQRRg8MgYIBxBFGDzSAQg0Mzc5ajBqN6gCALACAA&ie=UTF-8`;
   try {
     const response = await fetch(goldPriceUrl, {mode: "no-cors"});
     const html = await response.text();
     const dom = new JSDOM(html);
-    console.log("Dom: ",dom);
     const goldPriceElement = dom.window.document.querySelector("a .BNeawe.deIvCb.AP7Wnd");
     console.log("Gold Price Element: ",goldPriceElement);    
     const goldPrice = goldPriceElement?.textContent ?? null;

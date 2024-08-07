@@ -12,6 +12,7 @@ const recipientUsers = [RECIPIENT_EMAIL_ONE, RECIPIENT_EMAIL_TWO];
 let goldPriceData = [];
 
 async function fetchGoldPrice() {
+  console.log("Fetching gold price...");
   const goldPriceUrl = `https://www.google.com/search?q=gold+price+today+${CITY}&rlz=1C1RXQR_enIN1117IN1117&oq=g&gs_lcrp=EgZjaHJvbWUqBggCEEUYOzIGCAAQRRg8MgYIARBFGDwyBggCEEUYOzIGCAMQRRg8MgYIBBBFGDMyBggFEEUYPDIGCAYQRRg8MgYIBxBFGDzSAQg0Mzc5ajBqN6gCALACAA&sourceid=chrome&ie=UTF-8`;
   try {
     const response = await fetch(goldPriceUrl);
@@ -20,8 +21,10 @@ async function fetchGoldPrice() {
     const goldPriceElement = dom.window.document.querySelector("a .BNeawe.deIvCb.AP7Wnd");
     const goldPrice = goldPriceElement?.textContent ?? null;
     const priceMatch = goldPrice?.match(/(\d{1,3}(,\d{3})*)\s*INR/);
+    console.log("Gold price fetched:", priceMatch?.[1] ?? null);
     return priceMatch?.[1] ?? null;
   } catch (error) {
+    console.log("Error fetching gold price:", error.message);
     return res.status(500).json({error: "Error fetching gold price", message: error.message, succes: false});
   }
 }

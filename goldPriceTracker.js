@@ -1,32 +1,47 @@
 import nodemailer from "nodemailer";
 import cron from "node-cron";
 import fetch from "node-fetch";
-import {JSDOM} from "jsdom";
+import { JSDOM } from "jsdom";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const {SENDER_EMAIL, SENDER_PASSWORD, RECIPIENT_EMAIL_ONE, RECIPIENT_EMAIL_TWO, CITY} = process.env;
+const { SENDER_EMAIL, SENDER_PASSWORD, RECIPIENT_EMAIL_ONE, RECIPIENT_EMAIL_TWO, CITY, URI } = process.env;
 const recipientUsers = [RECIPIENT_EMAIL_ONE, RECIPIENT_EMAIL_TWO];
 
 let goldPriceData = [];
+let lastGoldPrice = { sellingPrice: null, purchasingPrice: null };
 
 async function fetchGoldPrice(res) {
-  console.log("Fetching gold price...");
-  const goldPriceUrl = `https://www.google.com/search?q=gold+price+today+${CITY}&rlz=1C1RXQR_enIN1117IN1117&oq=g&gs_lcrp=EgZjaHJvbWUqBggCEEUYOzIGCAAQRRg8MgYIARBFGDwyBggCEEUYOzIGCAMQRRg8MgYIBBBFGDMyBggFEEUYPDIGCAYQRRg8MgYIBxBFGDzSAQg0Mzc5ajBqN6gCALACAA&ie=UTF-8`;
   try {
-    const response = await fetch(goldPriceUrl, {mode: "no-cors"});
-    const html = await response.text();
-    const dom = new JSDOM(html);
-    console.log(dom);
-    const goldPriceElement = dom.window.document.querySelector("a .BNeawe.deIvCb.AP7Wnd");
-    const goldPrice = goldPriceElement?.textContent ?? null;
-    const priceMatch = goldPrice?.match(/(\d{1,3}(,\d{3})*)\s*INR/);
-    if (!priceMatch) throw new Error("Gold price not found");
-    return priceMatch?.[1];
+    // Fetch the data from Paytm's API
+    const response = await fetch(URI, {
+      mode: "no-cors",
+    });
+    
+    // Ensure the response status is 200 OK
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Parse the JSON data from the response
+    const json = await response.json();
+    
+    // Extract the necessary information from the JSON response
+    const goldPriceData = json?.portfolio?.product_level?.[0];
+    
+    if (!goldPriceData) {
+      throw new Error("Gold price data not found in the response");
+    }    
+    const data = {
+      purchasingPrice: goldPriceData.price_per_gm,
+      sellingPrice: goldPriceData.sell_price_per_gm,
+    };
+    return  data;
+
   } catch (error) {
     console.log("Error fetching gold price:", error.message);
-    return res.status(500).json({error: "Error fetching gold price", message: error.message, succes: false});
+    return res.status(500).json({ error: "Error fetching gold price", message: error.message, success: false });
   }
 }
 
@@ -46,18 +61,22 @@ async function sendNotification(lastPrice, currentPrice) {
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
             <thead>
                 <tr>
-                    <th style="padding: 10px; background: #f4f4f4; border: 1px solid #ddd; text-align: left;">Previous Price</th>
-                    <th style="padding: 10px; background: #f4f4f4; border: 1px solid #ddd; text-align: left;">Current Price</th>
+                    <th style="padding: 10px; background: #f4f4f4; border: 1px solid #ddd; text-align: left;">Previous Selling Price</th>
+                    <th style="padding: 10px; background: #f4f4f4; border: 1px solid #ddd; text-align: left;">Current Selling Price</th>
+                    <th style="padding: 10px; background: #f4f4f4; border: 1px solid #ddd; text-align: left;">Previous Purchasing Price</th>
+                    <th style="padding: 10px; background: #f4f4f4; border: 1px solid #ddd; text-align: left;">Current Purchasing Price</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td style="padding: 10px; border: 1px solid #ddd;">₹${lastPrice.toLocaleString("en-IN")}</td>
-                    <td style="padding: 10px; border: 1px solid #ddd;">₹${currentPrice.toLocaleString("en-IN")}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">₹${lastPrice.sellingPrice}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">₹${currentPrice.sellingPrice}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">₹${lastPrice.purchasingPrice}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">₹${currentPrice.purchasingPrice}</td>
                 </tr>
             </tbody>
         </table>
-        <p style="font-size: 14px; color: #999; text-align: center; margin-top: 20px;">Notification generated at ${new Date().toLocaleString("en-IN", {timeZone: "Asia/Kolkata"})}</p>
+        <p style="font-size: 14px; color: #999; text-align: center; margin-top: 20px;">Notification generated at ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
     </div>
   `;
 
@@ -76,27 +95,25 @@ async function sendNotification(lastPrice, currentPrice) {
   }
 }
 
-let lastGoldPrice = null;
 
 async function checkGoldPrice(res) {
   const currentPrice = await fetchGoldPrice(res);
   if (currentPrice) {
-    const currentTime = new Date().toLocaleString("en-IN", {timeZone: "Asia/Kolkata"});
+    const currentTime = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
-    if (lastGoldPrice === null || currentPrice !== lastGoldPrice) {
-      // Add new data point
+    if (lastGoldPrice === null || currentPrice.sellingPrice !== lastGoldPrice.sellingPrice || currentPrice.purchasingPrice !== lastGoldPrice.purchasingPrice) {
       goldPriceData.push({
-        price: parseFloat(currentPrice.replace(/,/g, "")),
+        sellingPrice: parseFloat(currentPrice.sellingPrice.replace(/,/g, "")),
+        purchasingPrice: parseFloat(currentPrice.purchasingPrice.replace(/,/g, "")),
         timestamp: currentTime,
       });
 
       // If price has changed and we have a previous price, send notification
-      if (lastGoldPrice !== null && currentPrice !== lastGoldPrice) {
+      if (lastGoldPrice !== null && (currentPrice.sellingPrice !== lastGoldPrice.sellingPrice || currentPrice.purchasingPrice !== lastGoldPrice.purchasingPrice)) {
         await sendNotification(lastGoldPrice, currentPrice);
       }
 
       lastGoldPrice = currentPrice;
-      console.log(`Gold price updated: ₹${currentPrice} at ${currentTime}`);
     }
   }
   return currentPrice;
@@ -106,10 +123,10 @@ async function getLastGoldPrice(res) {
   return await checkGoldPrice(res);
 }
 
-// New function to get all gold price data
 function getGoldPriceData() {
   return goldPriceData;
 }
+
 cron.schedule(
   "*/10 * * * * *",
   async () => {
@@ -122,4 +139,4 @@ cron.schedule(
   }
 );
 
-export {checkGoldPrice, getLastGoldPrice, getGoldPriceData};
+export { checkGoldPrice, getLastGoldPrice, getGoldPriceData };

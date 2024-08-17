@@ -80,9 +80,10 @@ const htmlContent = `
       });
 
       channel.bind("price-update", function (data) {
-        if (data.price) {
-          console.log("Gold price updated:", data.price);
-          const formattedPrice = \`₹\${data.price.toLocaleString("en-IN")}\`;
+        if (data.sellingPrice && data.purchasingPrice) {
+          const sellingPrice = \`₹\${data.sellingPrice.toLocaleString("en-IN")}\`;
+          const purchasingPrice = \`₹\${data.purchasingPrice.toLocaleString("en-IN")}\`;
+          const formattedPrice = \`\${sellingPrice} / \${purchasingPrice}\`;
           priceDisplay.textContent = formattedPrice;
           wrapLetters();
         }
@@ -100,8 +101,10 @@ const htmlContent = `
       fetch("/api/goldprice")
         .then(response => response.json())
         .then(data => {
-          if (data.price) {
-            const formattedPrice = \`₹\${data.price.toLocaleString("en-IN")}\`;
+          if (data.sellingPrice && data.purchasingPrice) {
+            const sellingPrice = \`₹\${data.sellingPrice.toLocaleString("en-IN")}\`;
+            const purchasingPrice = \`₹\${data.purchasingPrice.toLocaleString("en-IN")}\`;
+            const formattedPrice = \`\${sellingPrice} / \${purchasingPrice}\`;
             priceDisplay.textContent = formattedPrice;
             wrapLetters();
           }
@@ -126,9 +129,8 @@ app.get("/", (_, res) => {
 
 app.get("/api/goldprice", async (_, res) => {
   try {
-    const currentPrice = await getLastGoldPrice(res);
-    console.log("Sending current price:", currentPrice);
-    res.json({price: currentPrice});
+    const {sellingPrice, purchasingPrice} = await getLastGoldPrice();
+    res.json({sellingPrice, purchasingPrice});
   } catch (error) {
     console.error("Error fetching gold price:", error);
     res.status(500).json({error: "Internal server error", message: error.message});
@@ -170,9 +172,9 @@ const startServer = async () => {
 
     setInterval(async () => {
       try {
-        const currentPrice = await checkGoldPrice();
-        console.log("Sending price update via Pusher:", currentPrice);
-        await pusher.trigger("gold-price-channel", "price-update", {price: currentPrice});
+        const {purchasingPrice, sellingPrice} = await checkGoldPrice();
+        console.log("Sending price update via Pusher:", sellingPrice);
+        await pusher.trigger("gold-price-channel", "price-update", {purchasingPrice, sellingPrice});
         console.log("Pusher event sent successfully");
       } catch (error) {
         console.error("Error sending Pusher event:", error);

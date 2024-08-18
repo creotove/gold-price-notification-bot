@@ -1,7 +1,6 @@
 import nodemailer from "nodemailer";
 import cron from "node-cron";
 import fetch from "node-fetch";
-import { JSDOM } from "jsdom";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -34,8 +33,8 @@ async function fetchGoldPrice(res) {
       throw new Error("Gold price data not found in the response");
     }    
     const data = {
-      purchasingPrice: goldPriceData.price_per_gm,
-      sellingPrice: goldPriceData.sell_price_per_gm,
+      purchasingPrice: (goldPriceData.price_per_gm * 10).toFixed(2),
+      sellingPrice: (goldPriceData.sell_price_per_gm * 10).toFixed(2),
     };
     return  data;
 
@@ -103,13 +102,13 @@ async function checkGoldPrice(res) {
 
     if (lastGoldPrice === null || currentPrice.sellingPrice !== lastGoldPrice.sellingPrice || currentPrice.purchasingPrice !== lastGoldPrice.purchasingPrice) {
       goldPriceData.push({
-        sellingPrice: parseFloat(currentPrice.sellingPrice.replace(/,/g, "")),
-        purchasingPrice: parseFloat(currentPrice.purchasingPrice.replace(/,/g, "")),
+        sellingPrice: parseFloat(currentPrice.sellingPrice),
+        purchasingPrice: parseFloat(currentPrice.purchasingPrice),
         timestamp: currentTime,
       });
 
       // If price has changed and we have a previous price, send notification
-      if (lastGoldPrice !== null && (currentPrice.sellingPrice !== lastGoldPrice.sellingPrice || currentPrice.purchasingPrice !== lastGoldPrice.purchasingPrice)) {
+      if (lastGoldPrice.sellingPrice !== null && lastGoldPrice.purchasingPrice !== null && (currentPrice.sellingPrice !== lastGoldPrice.sellingPrice || currentPrice.purchasingPrice !== lastGoldPrice.purchasingPrice)) {
         await sendNotification(lastGoldPrice, currentPrice);
       }
 

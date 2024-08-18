@@ -81,8 +81,8 @@ const htmlContent = `
 
       channel.bind("price-update", function (data) {
         if (data.sellingPrice && data.purchasingPrice) {
-          const sellingPrice = \`₹\${data.sellingPrice.toLocaleString("en-IN")}\`;
-          const purchasingPrice = \`₹\${data.purchasingPrice.toLocaleString("en-IN")}\`;
+          const sellingPrice = \`₹\${data.sellingPrice}\`;
+          const purchasingPrice = \`₹\${data.purchasingPrice}\`;
           const formattedPrice = \`\${sellingPrice} / \${purchasingPrice}\`;
           priceDisplay.textContent = formattedPrice;
           wrapLetters();
@@ -102,8 +102,8 @@ const htmlContent = `
         .then(response => response.json())
         .then(data => {
           if (data.sellingPrice && data.purchasingPrice) {
-            const sellingPrice = \`₹\${data.sellingPrice.toLocaleString("en-IN")}\`;
-            const purchasingPrice = \`₹\${data.purchasingPrice.toLocaleString("en-IN")}\`;
+            const sellingPrice = \`₹\${data.sellingPrice}\`;
+            const purchasingPrice = \`₹\${data.purchasingPrice}\`;
             const formattedPrice = \`\${sellingPrice} / \${purchasingPrice}\`;
             priceDisplay.textContent = formattedPrice;
             wrapLetters();
